@@ -63,6 +63,13 @@ def miniapp_static(path):
     return send_from_directory(miniapp_dist, path)
 
 
+@app.route('/assets/<path:path>')
+def assets_static(path):
+    """Serve miniapp assets directly (fallback for absolute paths)"""
+    assets_dir = Path(__file__).parent.parent.parent / 'miniapp' / 'dist' / 'assets'
+    return send_from_directory(assets_dir, path)
+
+
 @app.route('/api/login', methods=['POST'])
 def login():
     """Authenticate admin user"""
