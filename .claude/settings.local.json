@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Claude_Preview__preview_start",
+      "Bash(where npm)",
+      "Bash(\"C:/Users/калькулятор/Desktop/project/Raspisanie/.venv/Scripts/python.exe\" -c \"import flask; import telebot; import pandas; print\\(''All deps OK''\\)\")",
+      "Bash(\"C:/Users/калькулятор/Desktop/project/Raspisanie/.venv/Scripts/python.exe\" -c \":*)"
+    ]
+  }
+}

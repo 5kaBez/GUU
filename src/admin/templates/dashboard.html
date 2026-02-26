@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schedule Bot - Панель администратора</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="admin-container">
+        <header class="admin-header">
+            <div>
+                <h1>📚 Schedule Bot</h1>
+                <p style="color: rgba(255,255,255,0.9); margin-top: 5px;">Панель администратора</p>
+            </div>
+            <button id="logoutBtn" class="btn-logout">🚪 Выход</button>
+        </header>
+        
+        <div class="admin-content">
+            <!-- Navigation Tabs -->
+            <div class="nav-tabs">
+                <button class="tab-btn active" data-tab="dashboard">📊 Дашборд</button>
+                <button class="tab-btn" data-tab="analytics">📈 Аналитика</button>
+                <button class="tab-btn" data-tab="feedback">💬 Обратная связь</button>
+            </div>
+            
+            <!-- Dashboard Tab -->
+            <div id="dashboard-tab" class="tab-content active">
+            <!-- Statistics Section -->
+            <section class="stats-section">
+                <h2>📊 Статистика системы</h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="scheduleCount">0</div>
+                        <div class="stat-label">Записей расписания</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="institutesCount">0</div>
+                        <div class="stat-label">Институтов</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="groupsCount">0</div>
+                        <div class="stat-label">Программ подготовки</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="usersCount">0</div>
+                        <div class="stat-label">Всего пользователей</div>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                        <div class="stat-value" id="dauCount">0</div>
+                        <div class="stat-label">DAU (Сегодня)</div>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                        <div class="stat-value" id="mauCount">0</div>
+                        <div class="stat-label">MAU (30 дней)</div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Upload Section -->
+            <section class="upload-section">
+                <h2>📁 Загрузка расписания</h2>
+                <div class="upload-box">
+                    <form id="uploadForm">
+                        <div class="form-group">
+                            <label for="excelFile">📄 Выберите Excel файл:</label>
+                            <input type="file" id="excelFile" name="file" accept=".xlsx,.xls" required>
+                            <small style="color: var(--text-secondary); margin-top: 5px; display: block;">
+                                Поддерживаются форматы .xlsx и .xls
+                            </small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="uploadMode">⚡ Режим загрузки:</label>
+                            <select id="uploadMode" name="mode">
+                                <option value="append">Дополнить существующие данные</option>
+                                <option value="replace">Заменить все данные</option>
+                            </select>
+                        </div>
+                        
+                        <button type="submit" class="btn-primary">Загрузить файл</button>
+                    </form>
+                    
+                    <div id="uploadProgress" class="progress-bar" style="display: none;">
+                        <div class="progress-fill"></div>
+                    </div>
+                    <div id="uploadStatus" class="upload-status"></div>
+                </div>
+            </section>
+            
+            <!-- Actions Section -->
+            <section class="actions-section">
+                <h2>⚙️ Управление</h2>
+                <div class="action-buttons">
+                    <button id="backupBtn" class="btn-secondary">💾 Создать резервную копию</button>
+                    <button id="clearBtn" class="btn-danger">🗑️ Очистить базу данных</button>
+                </div>
+            </section>
+            
+            <!-- Logs Section -->
+            <section class="logs-section">
+                <h2>📋 История операций</h2>
+                <div id="logsList" class="logs-list">
+                    <p style="color: var(--text-secondary); padding: 20px; text-align: center;">Загрузка логов...</p>
+                </div>
+            </section>
+            
+            <!-- Schedule View Section -->
+            <section class="schedule-section">
+                <h2>📚 Загруженное расписание</h2>
+                <div class="schedule-filters">
+                    <div class="filter-group">
+                        <label for="programSearch">Поиск программы:</label>
+                        <input type="text" id="programSearch" placeholder="Введите название программы...">
+                    </div>
+                    <div class="filter-group">
+                        <label for="instituteFilter">Институт:</label>
+                        <select id="instituteFilter">
+                            <option value="">Все</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="directionFilter">Направление:</label>
+                        <select id="directionFilter">
+                            <option value="">Все</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="dayFilter">День недели:</label>
+                        <select id="dayFilter">
+                            <option value="">Все</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="courseFilter">Курс:</label>
+                        <select id="courseFilter">
+                            <option value="">Все</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="sortBy">Сортировка:</label>
+                        <select id="sortBy">
+                            <option value="group_asc">Программа (А-Я)</option>
+                            <option value="group_desc">Программа (Я-А)</option>
+                            <option value="time_asc">Время (рано - поздно)</option>
+                            <option value="time_desc">Время (поздно - рано)</option>
+                        </select>
+                    </div>
+                    <button id="filterBtn" class="btn-primary">Применить фильтры</button>
+                </div>
+                <div class="table-container">
+                    <table id="scheduleTable" class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Программа</th>
+                                <th>Курс</th>
+                                <th>Форма обучения</th>
+                                <th>Уровень образования</th>
+                                <th>Институт</th>
+                                <th>Направление</th>
+                                <th>Номер группы</th>
+                                <th>День недели</th>
+                                <th>Номер пары</th>
+                                <th>Время пары</th>
+                                <th>Чётность</th>
+                                <th>Предмет</th>
+                                <th>Вид пары</th>
+                                <th>Преподаватель</th>
+                                <th>Номер аудитории</th>
+                                <th>Недели</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="16" style="text-align: center; color: var(--text-secondary);">Загрузка данных...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination" id="schedulePagination"></div>
+            </section>
+            
+            <!-- Users View Section -->
+            <section class="users-section">
+                <h2>👥 Данные пользователей</h2>
+                <div class="table-container">
+                    <table id="usersTable" class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>ID пользователя</th>
+                                <th>Username</th>
+                                <th>Форма обучения</th>
+                                <th>Уровень образования</th>
+                                <th>Курс</th>
+                                <th>Институт</th>
+                                <th>Направление</th>
+                                <th>Программа</th>
+                                <th>Группа</th>
+                                <th>Дата регистрации</th>
+                                <th>Дата обновления</th>
+                                <th>Действий</th>
+                                <th>Последняя активность</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="13" style="text-align: center; color: var(--text-secondary);">Загрузка данных...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination" id="usersPagination"></div>
+            </section>
+            </div>
+            
+            <!-- Analytics Tab -->
+            <div id="analytics-tab" class="tab-content">
+                <h2>📈 Аналитика системы</h2>
+                
+                <section class="analytics-section">
+                    <div class="analytics-grid">
+                        <div class="analytics-card">
+                            <div class="metric-value" id="totalActiveUsers">0</div>
+                            <div class="metric-label">Активных пользователей</div>
+                        </div>
+                        <div class="analytics-card">
+                            <div class="metric-value" id="totalFeedback">0</div>
+                            <div class="metric-label">Всего отзывов</div>
+                        </div>
+                    </div>
+                </section>
+                
+                <section class="analytics-metrics" style="display: none;"></section>
+                
+                <div class="analytics-row">
+                    <section class="analytics-section" style="flex: 1;">
+                        <h3>📝 Заявки на сервисы</h3>
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Сервис</th>
+                                    <th>Заявок</th>
+                                </tr>
+                            </thead>
+                            <tbody data-table="applications">
+                                <tr><td colspan="2" style="text-align: center;">Загрузка...</td></tr>
+                            </tbody>
+                        </table>
+                    </section>
+                    
+                    <section class="analytics-section" style="flex: 1;">
+                        <h3>🎯 Топ действий</h3>
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Действие</th>
+                                    <th>Количество</th>
+                                </tr>
+                            </thead>
+                            <tbody id="topActionsBody">
+                                <tr><td colspan="2" style="text-align: center;">Загрузка...</td></tr>
+                            </tbody>
+                        </table>
+                    </section>
+                </div>
+                
+                <div class="analytics-row">
+                    <section class="analytics-section" style="flex: 1;">
+                        <h3>🛠 Клики на сервисы</h3>
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Сервис</th>
+                                    <th>Клики</th>
+                                </tr>
+                            </thead>
+                            <tbody id="serviceClicksBody">
+                                <tr><td colspan="2" style="text-align: center;">Загрузка...</td></tr>
+                            </tbody>
+                        </table>
+                    </section>
+                    
+                    <section class="analytics-section" style="flex: 1;">
+                        <h3>🏢 Пользователи по курсам</h3>
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Курс</th>
+                                    <th>Количество</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersByCourseBody">
+                                <tr><td colspan="2" style="text-align: center;">Загрузка...</td></tr>
+                            </tbody>
+                        </table>
+                    </section>
+                </div>
+                
+                <section class="analytics-section">
+                    <h3>🏛 Топ институтов</h3>
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Институт</th>
+                                <th>Количество пользователей</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersPerInstituteBody">
+                            <tr><td colspan="2" style="text-align: center;">Загрузка...</td></tr>
+                        </tbody>
+                    </table>
+                </section>
+            </div>
+            
+            <!-- Feedback Tab -->
+            <div id="feedback-tab" class="tab-content">
+                <h2>💬 Обратная связь от пользователей</h2>
+                
+                <section class="feedback-section">
+                    <div class="table-container">
+                        <table id="feedbackTable" class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>User ID</th>
+                                    <th>Username</th>
+                                    <th>Группа</th>
+                                    <th>Сообщение</th>
+                                    <th>Дата</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td colspan="6" style="text-align: center; color: var(--text-secondary);">Загрузка данных...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="pagination" id="feedbackPagination"></div>
+                </section>
+            </div>
+            </div>
+    
+    <script src="{{ url_for('static', filename='dashboard.js') }}"></script>
+</body>
+</html>

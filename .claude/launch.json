@@ -1,0 +1,30 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "miniapp-vite",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["node_modules/vite/bin/vite.js", "--port", "3000"],
+      "cwd": "miniapp",
+      "port": 3000
+    },
+    {
+      "name": "miniapp-http",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["miniapp_http_server.py"],
+      "port": 5001
+    },
+    {
+      "name": "flask-api",
+      "runtimeExecutable": ".venv/Scripts/python.exe",
+      "runtimeArgs": ["-c", "import sys; sys.path.insert(0,'src'); from admin.app import run_admin_app; run_admin_app(debug=True, port=5000)"],
+      "port": 5000
+    },
+    {
+      "name": "all-services",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["run_all.py"],
+      "port": 5001
+    }
+  ]
+}
