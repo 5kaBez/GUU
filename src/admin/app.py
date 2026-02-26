@@ -106,14 +106,6 @@ def login():
     return jsonify({'error': 'Invalid password'}), 401
 
 
-@app.route('/api/logout', methods=['POST'])
-@login_required
-def logout():
-    """Logout admin user"""
-    session.pop('admin_id', None)
-    return jsonify({'success': True, 'message': 'Logged out'}), 200
-
-
 @app.route('/api/profile-options', methods=['GET'])
 def get_profile_options():
     """Get unique options for cascading profile selection"""
@@ -181,36 +173,7 @@ def logout():
 
 # ========== MINIAPP API ENDPOINTS ==========
 
-@app.route('/api/miniapp/user/<user_id>', methods=['GET'])
-def get_miniapp_user(user_id):
-    """Get user data for MiniApp"""
-    try:
-        user = db.fetch_one('SELECT * FROM users WHERE user_id = ?', (user_id,))
-        
-        if not user:
-            return jsonify({
-                'user_id': user_id,
-                'profile_complete': False,
-                'data': None
-            }), 200
-        
-        return jsonify({
-            'user_id': user_id,
-            'profile_complete': bool(user.get('Номер группы')),
-            'data': {
-                'form_of_education': user.get('Форма обучения'),
-                'education_level': user.get('Уровень обучения'),
-                'course': user.get('Курс'),
-                'institute': user.get('Институт'),
-                'direction': user.get('Направление'),
-                'program': user.get('Программа'),
-                'group': user.get('Номер группы'),
-                'created_at': user.get('created_at')
-            }
-        }), 200
-    except Exception as e:
-        logger.error(f"Error getting user for miniapp: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+
 
 
 @app.route('/api/miniapp/schedule/<user_id>', methods=['GET'])
@@ -240,60 +203,7 @@ def get_miniapp_schedule(user_id):
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/api/miniapp/user/<user_id>', methods=['POST'])
-def save_miniapp_user(user_id):
-    """Save/update user data from MiniApp"""
-    try:
-        data = request.get_json()
-        
-        # Check if user exists
-        existing = db.fetch_one('SELECT * FROM users WHERE user_id = ?', (user_id,))
-        
-        if existing:
-            # Update
-            db.execute('''
-                UPDATE users SET
-                    "Форма обучения" = ?,
-                    "Уровень обучения" = ?,
-                    "Курс" = ?,
-                    "Институт" = ?,
-                    "Направление" = ?,
-                    "Программа" = ?,
-                    "Номер группы" = ?
-                WHERE user_id = ?
-            ''', (
-                data.get('form_of_education'),
-                data.get('education_level'),
-                data.get('course'),
-                data.get('institute'),
-                data.get('direction'),
-                data.get('program'),
-                data.get('group'),
-                user_id
-            ))
-            logger.info(f"User {user_id} profile updated via miniapp")
-        else:
-            # Insert
-            db.execute('''
-                INSERT INTO users (user_id, "Форма обучения", "Уровень обучения", 
-                    "Курс", "Институт", "Направление", "Программа", "Номер группы")
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                user_id,
-                data.get('form_of_education'),
-                data.get('education_level'),
-                data.get('course'),
-                data.get('institute'),
-                data.get('direction'),
-                data.get('program'),
-                data.get('group')
-            ))
-            logger.info(f"New user {user_id} created via miniapp")
-        
-        return jsonify({'success': True, 'message': 'Profile saved'}), 200
-    except Exception as e:
-        logger.error(f"Error saving user in miniapp: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+
 
 
 @app.route('/api/dashboard', methods=['GET'])
