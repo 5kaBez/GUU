@@ -1000,6 +1000,68 @@ def get_filtered_schedule():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/profile-options', methods=['GET'])
+def get_profile_options():
+    """Fetch distinct values for cascading profile selectors from schedule table"""
+    try:
+        target = request.args.get('target')
+        form = request.args.get('form')
+        level = request.args.get('level')
+        course = request.args.get('course')
+        institute = request.args.get('institute')
+        direction = request.args.get('direction')
+        program = request.args.get('program')
+
+        # Map frontend keys to database column names
+        col_map = {
+            'form': 'Форма обучения',
+            'level': 'Уровень образования',
+            'course': 'Курс',
+            'institute': 'Институт',
+            'direction': 'Направление',
+            'program': 'Программа',
+            'group': 'Номер группы'
+        }
+
+        db_col = col_map.get(target)
+        if not db_col:
+            return jsonify({'error': f'Invalid target: {target}'}), 400
+
+        # Build dynamic query based on previous selections
+        query = f'SELECT DISTINCT "{db_col}" FROM schedule WHERE "{db_col}" IS NOT NULL'
+        params = []
+
+        if form:
+            query += ' AND "Форма обучения" = ?'
+            params.append(form)
+        if level:
+            query += ' AND "Уровень образования" = ?'
+            params.append(level)
+        if course:
+            query += ' AND "Курс" = ?'
+            params.append(int(course))
+        if institute:
+            query += ' AND "Институт" = ?'
+            params.append(institute)
+        if direction:
+            query += ' AND "Направление" = ?'
+            params.append(direction)
+        if program:
+            query += ' AND "Программа" = ?'
+            params.append(program)
+
+        query += f' ORDER BY "{db_col}" ASC'
+        
+        results = db.fetch_all(query, tuple(params))
+        options = [row[db_col] for row in results if row[db_col]]
+        
+        return jsonify({'target': target, 'options': options}), 200
+        
+    except Exception as e:
+        logger.error(f"Error getting profile options: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/miniapp/programs/<institute>', methods=['GET'])
 def get_programs_by_institute(institute):
     """Get programs for selected institute"""
@@ -1072,7 +1134,7 @@ def save_user_profile(user_id):
         if user:
             # Update existing user
             db.execute('''
-                UPDATE users SET
+                UPDATE users SET 
                     first_name = ?,
                     last_name = ?,
                     "Форма обучения" = ?,
@@ -1086,11 +1148,11 @@ def save_user_profile(user_id):
             ''', (
                 data.get('first_name'),
                 data.get('last_name'),
-                data.get('form_of_education'),
-                data.get('education_level'),
-                data.get('course'),
-                data.get('direction'),
-                data.get('group'),
+                data.get('form_of_education') or data.get('Форма обучения'),
+                data.get('education_level') or data.get('Уровень образования'),
+                data.get('course') or data.get('Курс'),
+                data.get('direction') or data.get('Направление'),
+                data.get('group') or data.get('Номер группы'),
                 user_id
             ))
         else:
@@ -1108,10 +1170,7 @@ def save_user_profile(user_id):
                 data.get('education_level') or data.get('Уровень образования'),
                 data.get('course') or data.get('Курс'),
                 data.get('direction') or data.get('Направление'),
-                data.get('group') or data.get('Номер группы'),
-                1,
-                datetime('now'),
-                datetime('now')
+                data.get('group') or data.get('Номер группы')
             ))
         
         # Return updated user
