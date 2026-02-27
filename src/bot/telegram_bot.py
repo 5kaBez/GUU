@@ -21,7 +21,7 @@ from datetime import datetime
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from database.models import Database
-from config import MINIAPP_URL, TELEGRAM_BOT_TOKEN
+from config import MINIAPP_URL, TELEGRAM_BOT_TOKEN, DATABASE_PATH
 
 # Configure logging
 logging.basicConfig(
@@ -40,7 +40,7 @@ if not TELEGRAM_BOT_TOKEN:
     sys.exit(1)
 
 bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN)
-db = Database()
+db = Database(DATABASE_PATH)
 
 # --- UTILS ---
 
@@ -60,8 +60,7 @@ def get_main_menu():
     """Create main menu keyboard with 5 buttons"""
     markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
     
-    # Using the exact emojis and text from the user's screenshot
-    btn_schedule = types.KeyboardButton("📅 Расписание", web_app=types.WebAppInfo(url=MINIAPP_URL))
+    btn_schedule = types.KeyboardButton("📅 Расписание")
     btn_profile = types.KeyboardButton("👤 Профиль")
     btn_services = types.KeyboardButton("⚙️ Сервисы")
     btn_feedback = types.KeyboardButton("💭 Обратная связь")
@@ -71,6 +70,17 @@ def get_main_menu():
     markup.add(btn_services, btn_feedback)
     markup.add(btn_app)
     
+    return markup
+
+def get_schedule_menu():
+    """Menu for schedule selection"""
+    markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
+    markup.add(
+        types.KeyboardButton("🗓️ Сегодня"),
+        types.KeyboardButton("🌅 Завтра"),
+        types.KeyboardButton("📅 На неделю"),
+        types.KeyboardButton("🔙 Назад")
+    )
     return markup
 
 def get_services_menu():
@@ -117,6 +127,12 @@ def handle_start(message):
         logger.error(f"Error in /start: {e}", exc_info=True)
         bot.send_message(user_id, "❌ Произошла ошибка при запуске бота. Обратитесь к разработчику.")
 
+@bot.message_handler(func=lambda m: m.text == "📅 Расписание")
+def handle_schedule_menu(message):
+    user_id = message.from_user.id
+    log_user_activity(user_id, 'click_schedule_menu')
+    bot.send_message(user_id, "📅 <b>Расписание</b>\n\nВыберите период:", parse_mode="HTML", reply_markup=get_schedule_menu())
+
 @bot.message_handler(func=lambda m: m.text == "👤 Профиль")
 def handle_profile(message):
     user_id = message.from_user.id
@@ -124,18 +140,32 @@ def handle_profile(message):
     
     user = db.fetch_one('SELECT * FROM users WHERE user_id = ?', (user_id,))
     if not user:
-        bot.send_message(user_id, "Профиль не найден. Попробуйте /start")
+        bot.send_message(user_id, "❌ Профиль не найден. Попробуйте /start")
         return
         
+    profile_status = "✅ Заполнен" if user.get('profile_completed') else "⚠️ Не заполнен"
+    
+    # Format name specifically to avoid "None None"
+    fname = user.get('first_name') or message.from_user.first_name or ""
+    lname = user.get('last_name') or message.from_user.last_name or ""
+    full_user_name = f"{fname} {lname}".strip() or "Студент"
+    
     profile_text = (
-        f"👤 <b>Ваш профиль</b>\n\n"
-        f"<b>ID:</b> <code>{user_id}</code>\n"
-        f"<b>Имя:</b> {user.get('first_name', '')} {user.get('last_name', '')}\n"
-        f"<b>Группа:</b> {user.get('Номер группы') or 'Не указана'}\n"
-        f"<b>Курс:</b> {user.get('Курс') or 'Не указан'}\n\n"
-        f"<i>Для изменения данных используйте Mini App (кнопка Приложение).</i>"
+        f"👤 <b>Ваш профиль</b>\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"<b>Статус:</b> {profile_status}\n"
+        f"<b>Имя:</b> {full_user_name}\n"
+        f"<b>Группа:</b> <code>{user.get('Номер группы') or '—'}</code>\n"
+        f"<b>Институт:</b> {user.get('Институт') or '—'}\n"
+        f"<b>Курс:</b> {user.get('Курс') or '—'}\n"
+        f"━━━━━━━━━━━━━━━\n\n"
+        f"<i>Для изменения данных используйте наше <b>Приложение</b>.</i>"
     )
-    bot.send_message(user_id, profile_text, parse_mode="HTML")
+    
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("⚙️ Редактировать в приложении", web_app=types.WebAppInfo(url=MINIAPP_URL)))
+    
+    bot.send_message(user_id, profile_text, parse_mode="HTML", reply_markup=markup)
 
 @bot.message_handler(func=lambda m: m.text == "⚙️ Сервисы")
 def handle_services(message):
