@@ -1053,7 +1053,14 @@ def get_profile_options():
         query += f' ORDER BY "{db_col}" ASC'
         
         results = db.fetch_all(query, tuple(params))
-        options = [row[db_col] for row in results if row[db_col]]
+        # Filter out None, empty strings, and duplicates
+        options = []
+        seen = set()
+        for row in results:
+            val = row[db_col]
+            if val and str(val).strip() and val not in seen:
+                options.append(val)
+                seen.add(val)
         
         return jsonify({'target': target, 'options': options}), 200
         
