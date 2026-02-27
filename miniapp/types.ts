@@ -7,6 +7,7 @@ export interface ClassSession {
   subject: string;
   type: ClassType;
   weeks?: string;
+  parity?: string;
   teacher?: string;
   room: string;
 }

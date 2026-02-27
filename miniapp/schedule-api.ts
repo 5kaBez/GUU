@@ -1,4 +1,5 @@
 import { ClassSession, DaySchedule } from './types';
+import { getWeekParity } from './utils';
 
 // Standard GUU lesson times by lesson number
 const LESSON_TIMES: Record<number, { start: string; end: string }> = {
@@ -90,6 +91,7 @@ export function mapToClassSession(record: ApiScheduleRecord, index: number): Cla
     subject: record['Предмет'] || 'Без названия',
     type,
     weeks: record['Недели'] || undefined,
+    parity: record['Чётность'] || undefined,
     teacher: record['Преподаватель'] || undefined,
     room: record['Номер аудитории'] || '-',
   };
@@ -122,16 +124,24 @@ export function getDaySchedule(
   const dayName = JS_DAY_TO_RUSSIAN[date.getDay()];
   const sessions = groupedData[dayName] || [];
 
-  // Filter by parity if provided and records have parity info
-  // For now, return all sessions for the day
-  const weekNumber = getWeekNumber(date);
-  const isEven = weekNumber % 2 === 0;
+  const currentParity = getWeekParity(date);
+
+  // Filter sessions by parity and week range
+  const filteredSessions = sessions.filter(s => {
+    // 1. Check Parity
+    if (s.parity && s.parity !== 'Обе' && s.parity !== currentParity) {
+      return false;
+    }
+
+    // 2. Check Week Range placeholder
+    return true;
+  });
 
   return {
     date: date.toISOString().split('T')[0],
     dayOfWeek: dayName,
-    isEvenWeek: isEven,
-    sessions,
+    isEvenWeek: currentParity === 'Чётная',
+    sessions: filteredSessions,
   };
 }
 
