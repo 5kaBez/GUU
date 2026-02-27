@@ -56,15 +56,18 @@ def log_user_activity(user_id, action, details=None):
 
 # --- KEYBOARDS ---
 
-def get_main_menu():
+def get_main_menu(user_id=None):
     """Create main menu keyboard with 5 buttons"""
     markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
+    
+    # We pass user_id in the URL as a fallback for reliability
+    app_url = f"{MINIAPP_URL}?user_id={user_id}" if user_id else MINIAPP_URL
     
     btn_schedule = types.KeyboardButton("📅 Расписание")
     btn_profile = types.KeyboardButton("👤 Профиль")
     btn_services = types.KeyboardButton("⚙️ Сервисы")
     btn_feedback = types.KeyboardButton("💭 Обратная связь")
-    btn_app = types.KeyboardButton("💻 ПРИЛОЖЕНИЕ", web_app=types.WebAppInfo(url=MINIAPP_URL))
+    btn_app = types.KeyboardButton("💻 ПРИЛОЖЕНИЕ", web_app=types.WebAppInfo(url=app_url))
     
     markup.add(btn_schedule, btn_profile)
     markup.add(btn_services, btn_feedback)
@@ -121,7 +124,7 @@ def handle_start(message):
             "Выберите интересующий вас раздел в меню ниже:"
         )
         
-        bot.send_message(user_id, welcome_text, parse_mode="HTML", reply_markup=get_main_menu())
+        bot.send_message(user_id, welcome_text, parse_mode="HTML", reply_markup=get_main_menu(user_id))
         
     except Exception as e:
         logger.error(f"Error in /start: {e}", exc_info=True)
@@ -187,7 +190,7 @@ def handle_phys(message):
 @bot.message_handler(func=lambda m: m.text == "🔙 Назад")
 def handle_back(message):
     user_id = message.from_user.id
-    bot.send_message(user_id, "Возвращаемся в главное меню...", reply_markup=get_main_menu())
+    bot.send_message(user_id, "Возвращаемся в главное меню...", reply_markup=get_main_menu(user_id))
 
 @bot.message_handler(func=lambda m: m.text == "💭 Обратная связь")
 def handle_feedback_start(message):
