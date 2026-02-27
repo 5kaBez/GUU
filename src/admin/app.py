@@ -110,65 +110,6 @@ def login():
     return jsonify({'error': 'Invalid password'}), 401
 
 
-@app.route('/api/profile-options', methods=['GET'])
-def get_profile_options():
-    """Get unique options for cascading profile selection"""
-    filters = {
-        'form': request.args.get('form'),
-        'level': request.args.get('level'),
-        'course': request.args.get('course'),
-        'institute': request.args.get('institute'),
-        'direction': request.args.get('direction'),
-        'program': request.args.get('program')
-    }
-    
-    query = 'SELECT DISTINCT "{target}" FROM schedule WHERE 1=1'
-    params = []
-    
-    # Mapping request keys to column names
-    col_map = {
-        'form': 'Форма обучения',
-        'level': 'Уровень образования',
-        'course': 'Курс',
-        'institute': 'Институт',
-        'direction': 'Направление',
-        'program': 'Программа',
-        'group': 'Номер группы'
-    }
-    
-    target_key = request.args.get('target', 'form')
-    target_col = col_map.get(target_key, 'Форма обучения')
-    
-    # Build dynamic query based on previous selections
-    active_filters = []
-    if filters['form']:
-        active_filters.append(('Форма обучения', filters['form']))
-    if filters['level']:
-        active_filters.append(('Уровень образования', filters['level']))
-    if filters['course']:
-        active_filters.append(('Курс', filters['course']))
-    if filters['institute']:
-        active_filters.append(('Институт', filters['institute']))
-    if filters['direction']:
-        active_filters.append(('Направление', filters['direction']))
-    if filters['program']:
-        active_filters.append(('Программа', filters['program']))
-        
-    where_clause = ""
-    query_params = []
-    for col, val in active_filters:
-        where_clause += f' AND "{col}" = ?'
-        query_params.append(val)
-        
-    final_query = f'SELECT DISTINCT "{target_col}" FROM schedule WHERE 1=1 {where_clause} ORDER BY "{target_col}"'
-    
-    try:
-        results = db.fetch_all(final_query, tuple(query_params))
-        options = [str(row[target_col]) for row in results if row[target_col]]
-        return jsonify({'options': options})
-    except Exception as e:
-        logger.error(f"Error fetching profile options: {e}")
-        return jsonify({'error': str(e)}), 500
 def logout():
     """Logout admin user"""
     session.clear()

@@ -166,7 +166,7 @@ def handle_profile(message):
     )
     
     markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton("⚙️ Редактировать в приложении", web_app=types.WebAppInfo(url=MINIAPP_URL)))
+    markup.add(types.InlineKeyboardButton("⚙️ Редактировать в приложении", web_app=types.WebAppInfo(url=f"{MINIAPP_URL}?user_id={user_id}")))
     
     bot.send_message(user_id, profile_text, parse_mode="HTML", reply_markup=markup)
 

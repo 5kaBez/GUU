@@ -2,15 +2,34 @@ import sqlite3
 from pathlib import Path
 from datetime import datetime
 import sys
+import os
+import logging
+
+# Try to import from config, but handle case where it might fail during direct execution
+try:
+    # Add parent directory to path for imports
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    from config import DATABASE_PATH
+except ImportError:
+    DATABASE_PATH = 'data/schedule.db'
+
+logger = logging.getLogger('database')
 
 
 class Database:
     """Simple SQLite database wrapper for schedule management"""
     
-    def __init__(self, db_path='data/schedule.db'):
+    def __init__(self, db_path=None):
         """Initialize database connection"""
-        self.db_path = Path(db_path)
+        self.db_path = Path(db_path or DATABASE_PATH)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        # Convert path to absolute to avoid relative path issues on Render
+        self.db_path = self.db_path.absolute()
+        
+        # Simple print is sometimes more reliable than logger during startup
+        print(f"DEBUG: Database initialized at: {self.db_path}")
+        logger.info(f"Database initialized at: {self.db_path}")
+        
         self.init_db()
     
     def init_db(self):

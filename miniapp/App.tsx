@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BookOpen, Briefcase, Dumbbell, User, CalendarDays, Calendar } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import ProfileScreen from './screens/ProfileScreen';
 import DayView from './screens/DayView';
 import WeekView from './screens/WeekView';
@@ -7,21 +8,142 @@ import { UserProfile, ClassSession } from './types';
 import { fetchUserSchedule, fetchFilteredSchedule, groupByDay } from './schedule-api';
 
 const CareerScreen: React.FC<{ userId: string; user: UserProfile }> = ({ userId, user }) => (
-  <div className="space-y-4 p-4">
-    <div className="bg-white rounded-lg p-4 border border-slate-200">
-      <h2 className="font-semibold text-lg mb-2">Расpisanie karriery</h2>
-      <p className="text-slate-600 text-sm mb-3">Направление: {user['Направление'] || user.direction || '-'}</p>
-      <div className="text-slate-500 text-sm">Событий карьеры пока нет</div>
+  <div className="flex flex-col h-full bg-brand-surface dark:bg-slate-900 transition-colors">
+    <div className="px-6 pt-10 pb-6">
+      <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Карьера</h1>
+      <p className="text-sm text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mt-1">Возможности и рост в ГУУ</p>
+    </div>
+
+    <div className="flex-1 overflow-y-auto px-6 space-y-6 pb-32 no-scrollbar">
+      <div className="relative overflow-hidden rounded-[2.5rem] p-8 text-white shadow-2xl bg-gradient-to-br from-indigo-600 to-violet-700">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-8 -mt-8"></div>
+        <div className="relative z-10">
+          <h2 className="text-xl font-black mb-2">Центр карьеры ГУУ</h2>
+          <p className="text-indigo-100 text-sm font-medium leading-relaxed opacity-90">
+            Актуальные вакансии, стажировки и карьерные мероприятия для студентов {user['Институт'] || 'университета'}.
+          </p>
+          <button className="mt-4 px-6 py-2 bg-white text-indigo-600 rounded-full text-xs font-black uppercase tracking-wider shadow-lg">
+            Узнать больше
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4">
+        <div className="bg-white dark:bg-slate-800/40 rounded-3xl p-6 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+              <Briefcase size={24} />
+            </div>
+            <div>
+              <h3 className="font-black text-slate-900 dark:text-white">Стажировки</h3>
+              <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Доступно: 12 позиций</p>
+            </div>
+          </div>
+          <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
+            Подборка эксклюзивных стажировок в компаниях-партнерах ГУУ: Сбер, Газпром, Яндекс и других.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <span className="px-3 py-1 bg-slate-100 dark:bg-slate-700 rounded-full text-[10px] font-bold text-slate-600 dark:text-slate-300">#Маркетинг</span>
+            <span className="px-3 py-1 bg-slate-100 dark:bg-slate-700 rounded-full text-[10px] font-bold text-slate-600 dark:text-slate-300">#IT</span>
+            <span className="px-3 py-1 bg-slate-100 dark:bg-slate-700 rounded-full text-[10px] font-bold text-slate-600 dark:text-slate-300">#Менеджмент</span>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-800/40 rounded-3xl p-6 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center text-amber-600 dark:text-amber-400">
+              <Calendar size={24} />
+            </div>
+            <div>
+              <h3 className="font-black text-slate-900 dark:text-white">Мероприятия</h3>
+              <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Ближайшее: Завтра</p>
+            </div>
+          </div>
+          <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+            День карьеры, мастер-классы от HR-специалистов и встречи с успешными выпускниками.
+          </p>
+        </div>
+
+        <div className="bg-white dark:bg-slate-800/40 rounded-3xl p-6 border border-slate-100 dark:border-slate-800 shadow-sm opacity-80">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+              <BookOpen size={24} />
+            </div>
+            <div>
+              <h3 className="font-black text-slate-900 dark:text-white">База знаний</h3>
+              <p className="text-[10px] px-2 py-0.5 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 rounded-lg inline-block font-black ml-1">NEW</p>
+            </div>
+          </div>
+          <p className="text-sm text-slate-600 dark:text-slate-400">Как составить резюме, которое заметят, и успешно пройти собеседование.</p>
+        </div>
+      </div>
     </div>
   </div>
 );
 
 const PhysEdScreen: React.FC<{ userId: string; user: UserProfile }> = ({ userId, user }) => (
-  <div className="space-y-4 p-4">
-    <div className="bg-white rounded-lg p-4 border border-slate-200">
-      <h2 className="font-semibold text-lg mb-2">Расписание физкультуры</h2>
-      <p className="text-slate-600 text-sm mb-3">Курс: {user['Курс'] || user.course || '-'}</p>
-      <div className="text-slate-500 text-sm">Расписание физкультуры загружается...</div>
+  <div className="flex flex-col h-full bg-brand-surface dark:bg-slate-900 transition-colors">
+    <div className="px-6 pt-10 pb-6">
+      <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Спорт</h1>
+      <p className="text-sm text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mt-1">Физкультура и секции в ГУУ</p>
+    </div>
+
+    <div className="flex-1 overflow-y-auto px-6 space-y-6 pb-32 no-scrollbar">
+      <div className="relative overflow-hidden rounded-[2.5rem] p-8 text-white shadow-2xl bg-gradient-to-br from-emerald-500 to-teal-600">
+        <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full blur-xl -ml-6 -mb-6"></div>
+        <div className="relative z-10">
+          <h2 className="text-xl font-black mb-2">Спортивный клуб ГУУ</h2>
+          <p className="text-emerald-50 text-sm font-medium leading-relaxed opacity-90">
+            Расписание обязательных занятий физкультурой и запись в спортивные секции университета.
+          </p>
+          <div className="mt-4 flex items-center gap-2">
+            <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-white/90">Комплекс открыт до 21:00</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="bg-white dark:bg-slate-800/40 rounded-3xl p-5 border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col items-center text-center">
+          <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-3">
+            <CalendarDays size={24} />
+          </div>
+          <h3 className="font-black text-sm text-slate-900 dark:text-white">Расписание</h3>
+          <p className="text-[10px] text-slate-500 mt-1 uppercase font-bold">Физкультура</p>
+        </div>
+
+        <div className="bg-white dark:bg-slate-800/40 rounded-3xl p-5 border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col items-center text-center">
+          <div className="w-12 h-12 bg-amber-50 dark:bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-600 dark:text-amber-400 mb-3">
+            <Dumbbell size={24} />
+          </div>
+          <h3 className="font-black text-sm text-slate-900 dark:text-white">Секции</h3>
+          <p className="text-[10px] text-slate-500 mt-1 uppercase font-bold">15+ видов</p>
+        </div>
+      </div>
+
+      <div className="bg-white dark:bg-slate-800/40 rounded-3xl p-6 border border-slate-100 dark:border-slate-800 shadow-sm">
+        <h3 className="font-black text-slate-900 dark:text-white mb-4">Популярные секции</h3>
+        <div className="space-y-4">
+          {[
+            { name: 'Волейбол', time: 'Пн, Ср 18:00', icon: '🏐' },
+            { name: 'Баскетбол', time: 'Вт, Чт 19:00', icon: '🏀' },
+            { name: 'Тренажерный зал', time: 'Ежедневно', icon: '💪' },
+          ].map((item, i) => (
+            <div key={i} className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50">
+              <div className="flex items-center gap-3">
+                <span className="text-xl">{item.icon}</span>
+                <div>
+                  <h4 className="font-black text-sm text-slate-900 dark:text-white">{item.name}</h4>
+                  <p className="text-[10px] text-slate-500 font-bold uppercase">{item.time}</p>
+                </div>
+              </div>
+              <button className="p-2 text-indigo-600 dark:text-indigo-400 bg-white dark:bg-slate-700 rounded-xl shadow-sm">
+                <Calendar size={16} />
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   </div>
 );
@@ -35,6 +157,24 @@ const App: React.FC = () => {
   const [scheduleByDay, setScheduleByDay] = useState<Record<string, ClassSession[]>>({});
   const [scheduleLoading, setScheduleLoading] = useState(false);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  // Apply dark mode class to html element
+  useEffect(() => {
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg) {
+      setIsDarkMode(tg.colorScheme === 'dark');
+      tg.onEvent('themeChanged', () => {
+        setIsDarkMode(tg.colorScheme === 'dark');
+      });
+    }
+
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkMode]);
 
   useEffect(() => {
     const initialize = async () => {
@@ -43,6 +183,12 @@ const App: React.FC = () => {
 
         const params = new URLSearchParams(window.location.search);
         let id = params.get('user_id');
+
+        // Mock ID for development/local testing
+        if (!id && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+          id = '123456'; // Standard test account
+          console.log('Using Mock User ID for local testing:', id);
+        }
 
         // Fallback to Telegram WebApp SDK if available
         const tg = (window as any).Telegram?.WebApp;
@@ -143,7 +289,7 @@ const App: React.FC = () => {
     );
   }
 
-  if (!user) {
+  if (!user || !user.profile_completed) {
     return <ProfileScreen userId={userId} onProfileSaved={setUser} />;
   }
 
@@ -191,18 +337,64 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="w-full h-screen flex flex-col bg-[#F2F4F6]">
+    <div className="w-full h-screen flex flex-col bg-brand-surface dark:bg-slate-900 transition-colors duration-300">
       {/* Main Content */}
-      <div className="flex-1 overflow-hidden">
-        {activeTab === 'schedule' && renderScheduleContent()}
-        {activeTab === 'career' && <CareerScreen userId={userId} user={user} />}
-        {activeTab === 'physed' && <PhysEdScreen userId={userId} user={user} />}
-        {activeTab === 'profile' && <ProfileScreen userId={userId} onProfileSaved={setUser} />}
+      <div className="flex-1 overflow-hidden relative">
+        <AnimatePresence mode="wait">
+          {activeTab === 'schedule' && (
+            <motion.div
+              key="schedule"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+              className="h-full w-full"
+            >
+              {renderScheduleContent()}
+            </motion.div>
+          )}
+          {activeTab === 'career' && (
+            <motion.div
+              key="career"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+              className="h-full w-full"
+            >
+              <CareerScreen userId={userId} user={user!} />
+            </motion.div>
+          )}
+          {activeTab === 'physed' && (
+            <motion.div
+              key="physed"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+              className="h-full w-full"
+            >
+              <PhysEdScreen userId={userId} user={user!} />
+            </motion.div>
+          )}
+          {activeTab === 'profile' && (
+            <motion.div
+              key="profile"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+              className="h-full w-full"
+            >
+              <ProfileScreen userId={userId} onProfileSaved={setUser} />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Bottom Navigation */}
-      <div className="shrink-0 bg-white/90 backdrop-blur-md border-t border-slate-200">
-        <div className="max-w-2xl mx-auto flex justify-around items-center px-4 py-2 pb-safe">
+      < div className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-6" >
+        <div className="max-w-md mx-auto glass dark:bg-slate-800/80 rounded-3xl shadow-xl shadow-indigo-500/10 flex justify-around items-center p-2">
           {/* Schedule tab with day/week toggle */}
           <button
             onClick={() => {
@@ -212,55 +404,51 @@ const App: React.FC = () => {
                 setActiveTab('schedule');
               }
             }}
-            className={`flex flex-col items-center gap-0.5 p-2 rounded-lg transition-colors ${
-              activeTab === 'schedule'
-                ? 'text-indigo-600 bg-indigo-50'
-                : 'text-slate-500 hover:text-slate-700'
-            }`}
+            className={`flex flex-col items-center gap-1 px-4 py-2 rounded-2xl transition-all duration-300 ${activeTab === 'schedule'
+              ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-500/20 dark:text-indigo-300'
+              : 'text-slate-400 dark:text-slate-500 hover:text-slate-600'
+              }`}
           >
-            {activeTab === 'schedule' && scheduleView === 'week' ? <CalendarDays size={22} /> : <Calendar size={22} />}
-            <span className="text-[10px] font-medium">
+            {activeTab === 'schedule' && scheduleView === 'week' ? <CalendarDays size={24} /> : <Calendar size={24} />}
+            <span className="text-[10px] font-bold uppercase tracking-wider">
               {activeTab === 'schedule' ? (scheduleView === 'day' ? 'День' : 'Неделя') : 'Учеба'}
             </span>
           </button>
 
           <button
             onClick={() => setActiveTab('career')}
-            className={`flex flex-col items-center gap-0.5 p-2 rounded-lg transition-colors ${
-              activeTab === 'career'
-                ? 'text-indigo-600 bg-indigo-50'
-                : 'text-slate-500 hover:text-slate-700'
-            }`}
+            className={`flex flex-col items-center gap-1 px-4 py-2 rounded-2xl transition-all duration-300 ${activeTab === 'career'
+              ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-500/20 dark:text-indigo-300'
+              : 'text-slate-400 dark:text-slate-500 hover:text-slate-600'
+              }`}
           >
-            <Briefcase size={22} />
-            <span className="text-[10px] font-medium">Карьера</span>
+            <Briefcase size={24} />
+            <span className="text-[10px] font-bold uppercase tracking-wider">Карьера</span>
           </button>
 
           <button
             onClick={() => setActiveTab('physed')}
-            className={`flex flex-col items-center gap-0.5 p-2 rounded-lg transition-colors ${
-              activeTab === 'physed'
-                ? 'text-indigo-600 bg-indigo-50'
-                : 'text-slate-500 hover:text-slate-700'
-            }`}
+            className={`flex flex-col items-center gap-1 px-4 py-2 rounded-2xl transition-all duration-300 ${activeTab === 'physed'
+              ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-500/20 dark:text-indigo-300'
+              : 'text-slate-400 dark:text-slate-500 hover:text-slate-600'
+              }`}
           >
-            <Dumbbell size={22} />
-            <span className="text-[10px] font-medium">Физкул</span>
+            <Dumbbell size={24} />
+            <span className="text-[10px] font-bold uppercase tracking-wider">Спорт</span>
           </button>
 
           <button
             onClick={() => setActiveTab('profile')}
-            className={`flex flex-col items-center gap-0.5 p-2 rounded-lg transition-colors ${
-              activeTab === 'profile'
-                ? 'text-indigo-600 bg-indigo-50'
-                : 'text-slate-500 hover:text-slate-700'
-            }`}
+            className={`flex flex-col items-center gap-1 px-4 py-2 rounded-2xl transition-all duration-300 ${activeTab === 'profile'
+              ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-500/20 dark:text-indigo-300'
+              : 'text-slate-400 dark:text-slate-500 hover:text-slate-600'
+              }`}
           >
-            <User size={22} />
-            <span className="text-[10px] font-medium">Профиль</span>
+            <User size={24} />
+            <span className="text-[10px] font-bold uppercase tracking-wider">Профиль</span>
           </button>
         </div>
-      </div>
+      </div >
 
       <style>{`
         .pb-safe {
@@ -282,7 +470,7 @@ const App: React.FC = () => {
         }
         .animate-fade-in { animation: fade-in 0.2s ease-out; }
       `}</style>
-    </div>
+    </div >
   );
 };
 

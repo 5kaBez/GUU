@@ -1,95 +1,86 @@
 import React from 'react';
 import { ClassSession } from '../types';
-import { MapPin, UserRound } from 'lucide-react';
+import { MapPin, UserRound, Clock } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 interface TimelineCardProps {
   session: ClassSession;
-  status: 'past' | 'current' | 'future';
+  isCurrent?: boolean;
   onClick: (session: ClassSession) => void;
 }
 
-const TimelineCard: React.FC<TimelineCardProps> = ({ session, status, onClick }) => {
-  const isCurrent = status === 'current';
-  const isPast = status === 'past';
-
-  // Dynamic styles based on class type
+const TimelineCard: React.FC<TimelineCardProps> = ({ session, isCurrent, onClick }) => {
   const getTypeStyles = (type: string) => {
-    switch(type) {
-      case 'Л': return 'bg-blue-50 text-blue-600 border-blue-100/50';
-      case 'ПЗ': return 'bg-emerald-50 text-emerald-600 border-emerald-100/50';
-      case 'ЛР': return 'bg-amber-50 text-amber-600 border-amber-100/50';
-      case 'ЭКЗ': return 'bg-rose-50 text-rose-600 border-rose-100/50';
-      default: return 'bg-slate-50 text-slate-600 border-slate-100';
+    switch (type) {
+      case 'Л': return 'bg-blue-50 text-blue-600 border-blue-100/50 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20';
+      case 'ПЗ': return 'bg-emerald-50 text-emerald-600 border-emerald-100/50 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20';
+      case 'ЛР': return 'bg-amber-50 text-amber-600 border-amber-100/50 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20';
+      case 'ЭКЗ': return 'bg-rose-50 text-rose-600 border-rose-100/50 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20';
+      default: return 'bg-slate-50 text-slate-500 border-slate-100 dark:bg-slate-800/50 dark:text-slate-400 dark:border-slate-800';
     }
   };
 
   return (
-    <div className="flex gap-3 sm:gap-4 group mb-4 last:mb-24">
-      {/* Time Column */}
-      <div className="flex flex-col items-end min-w-[48px] pt-1">
-        <span className={`text-sm font-bold tracking-tight leading-none ${isCurrent ? 'text-indigo-600 scale-105' : isPast ? 'text-slate-400' : 'text-slate-900'} transition-all`}>
+    <div className="flex gap-4 group mb-6 last:mb-24">
+      {/* Time Column with Progress Line */}
+      <div className="flex flex-col items-center min-w-[56px]">
+        <span className={`text-base font-black tracking-tighter leading-none mb-2 ${isCurrent ? 'text-brand-primary' : 'text-slate-900 dark:text-slate-100'}`}>
           {session.startTime}
         </span>
-        <span className="text-[10px] font-medium text-slate-400 mt-1">
+        <div className="flex-1 w-[2px] bg-slate-100 dark:bg-slate-800 rounded-full relative">
+          {isCurrent && (
+            <motion.div
+              className="absolute top-0 w-full bg-brand-primary rounded-full shadow-[0_0_10px_rgba(0,122,255,0.5)]"
+              initial={{ height: 0 }}
+              animate={{ height: "100%" }}
+              transition={{ duration: 2, repeat: Infinity }}
+            />
+          )}
+        </div>
+        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-600 mt-2 uppercase tracking-tight">
           {session.endTime}
         </span>
       </div>
 
-      {/* Timeline Graphic */}
-      <div className="relative flex flex-col items-center">
-        {/* The Dot */}
-        <div className={`
-          w-3 h-3 rounded-full z-10 border-[2px] mt-1.5 transition-all duration-300 shrink-0
-          ${isCurrent 
-            ? 'bg-indigo-600 border-indigo-200 shadow-[0_0_0_4px_rgba(99,102,241,0.2)] scale-110' 
-            : isPast 
-              ? 'bg-slate-200 border-slate-50' 
-              : 'bg-white border-slate-300'}
-        `}></div>
-        {/* The Line */}
-        <div className={`
-          w-0.5 flex-1 my-1 rounded-full
-          ${isPast ? 'bg-slate-100' : 'bg-slate-200/70'}
-          ${!isPast && !isCurrent ? 'border-l-2 border-dashed border-slate-200 bg-transparent w-0' : ''}
-        `}></div>
-      </div>
-
-      {/* Card Content */}
-      <div 
+      {/* Card Content - Apple Style */}
+      <motion.div
+        whileTap={{ scale: 0.97 }}
         onClick={() => onClick(session)}
         className={`
-          flex-1 min-w-0 relative overflow-hidden rounded-2xl p-3 sm:p-4 border transition-all duration-200 ease-out active:scale-[0.98] cursor-pointer
-          ${isCurrent 
-            ? 'bg-white border-indigo-100 shadow-[0_8px_20px_-6px_rgba(99,102,241,0.15)] ring-1 ring-indigo-50' 
-            : 'bg-white border-slate-100/50 shadow-sm hover:shadow-md'}
-          ${isPast ? 'opacity-60 grayscale-[0.5] bg-slate-50/50 shadow-none border-transparent' : ''}
+          flex-1 min-w-0 relative overflow-hidden rounded-[2.25rem] p-6 border transition-all duration-300 ease-out cursor-pointer
+          ${isCurrent
+            ? 'bg-white dark:bg-[#1C1C1E] border-brand-primary/20 shadow-2xl shadow-brand-primary/5'
+            : 'bg-white dark:bg-[#1C1C1E] border-slate-50 dark:border-slate-800 shadow-sm hover:shadow-xl hover:border-slate-200 dark:hover:border-slate-700'}
         `}
       >
-        <div className="flex justify-between items-start mb-2 gap-2">
-           <span className={`text-[10px] px-2 py-1 rounded-md border font-bold uppercase tracking-wider whitespace-nowrap ${getTypeStyles(session.type)}`}>
+        <div className="flex justify-between items-start mb-4 gap-2">
+          <span className={`text-[10px] px-2.5 py-1 rounded-lg border font-black uppercase tracking-widest whitespace-nowrap ${getTypeStyles(session.type)}`}>
             {session.type}
           </span>
-          {isCurrent && <span className="flex h-2 w-2 rounded-full bg-indigo-500 animate-pulse shrink-0 mt-1"></span>}
+          {isCurrent && (
+            <div className="flex items-center gap-1.5 px-2 py-1 bg-brand-primary/10 rounded-full">
+              <span className="flex h-2 w-2 rounded-full bg-brand-primary animate-pulse"></span>
+              <span className="text-[9px] font-black text-brand-primary uppercase tracking-widest">LIVE</span>
+            </div>
+          )}
         </div>
 
-        <h3 className={`font-bold text-[15px] leading-tight mb-3 break-words ${isCurrent ? 'text-slate-900' : 'text-slate-800'}`}>
+        <h3 className={`font-black text-lg leading-tight mb-5 break-words ${isCurrent ? 'text-slate-900 dark:text-white' : 'text-slate-800 dark:text-slate-100'}`}>
           {session.subject}
         </h3>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <div className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-md shrink-0 ${isCurrent ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-50 text-slate-500'}`}>
-            <MapPin size={12} strokeWidth={1.5} className="shrink-0" />
-            <span className="font-semibold whitespace-nowrap">{session.room}</span>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 text-[11px] px-3 py-1.5 rounded-xl font-bold bg-slate-50 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 border border-slate-100/50 dark:border-slate-700/50">
+            <MapPin size={14} className="text-brand-primary" />
+            <span className="truncate tracking-tight uppercase">{session.room}</span>
           </div>
-          
-          {session.teacher && (
-             <div className="flex items-center gap-1.5 text-xs text-slate-400 min-w-0 max-w-full">
-               <UserRound size={12} strokeWidth={1.5} className="shrink-0" />
-               <span className="truncate">{session.teacher.split(' ')[0]} {session.teacher.split(' ')[1] ? session.teacher.split(' ')[1][0] + '.' : ''}</span>
-             </div>
-          )}
+
+          <div className="flex items-center gap-2 text-[11px] text-slate-400 dark:text-slate-500 font-semibold px-2">
+            <UserRound size={14} />
+            <span className="truncate italic normal-case">{session.teacher || 'Преподаватель не указан'}</span>
+          </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 };

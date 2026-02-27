@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Loader2, User, BookOpen, GraduationCap, School, MapPin, Hash, UserCircle } from 'lucide-react';
+import { Save, Loader2, User, BookOpen, GraduationCap, School, MapPin, Hash, ChevronRight, RefreshCcw, Settings, ExternalLink } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { UserProfile } from '../types';
 
 interface ProfileScreenProps {
@@ -10,6 +11,7 @@ interface ProfileScreenProps {
 const ProfileScreen: React.FC<ProfileScreenProps> = ({ userId, onProfileSaved }) => {
   const [loading, setLoading] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -42,11 +44,9 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ userId, onProfileSaved })
     group: false,
   });
 
-  // Fetch initial data and options
   useEffect(() => {
-    const init = async () => {
+    const initData = async () => {
       try {
-        // Fetch current user data
         const userRes = await fetch(`/api/user/${userId}`);
         if (userRes.ok) {
           const userData = await userRes.json();
@@ -62,72 +62,66 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ userId, onProfileSaved })
               program: userData["Программа"] || '',
               group: userData["Номер группы"] || '',
             });
+
+            // Chain fetch options based on existing data
+            if (userData["Форма обучения"]) await fetchOptions('level', { form: userData["Форма обучения"] });
+            if (userData["Уровень образования"]) await fetchOptions('course', { form: userData["Форма обучения"], level: userData["Уровень образования"] });
+            if (userData["Курс"]) await fetchOptions('institute', { form: userData["Форма обучения"], level: userData["Уровень образования"], course: userData["Курс"] });
+            if (userData["Институт"]) await fetchOptions('direction', { form: userData["Форма обучения"], level: userData["Уровень образования"], course: userData["Курс"], institute: userData["Институт"] });
+            if (userData["Направление"]) await fetchOptions('program', { form: userData["Форма обучения"], level: userData["Уровень образования"], course: userData["Курс"], institute: userData["Институт"], direction: userData["Направление"] });
+            if (userData["Программа"]) await fetchOptions('group', { form: userData["Форма обучения"], level: userData["Уровень образования"], course: userData["Курс"], institute: userData["Институт"], direction: userData["Направление"], program: userData["Программа"] });
           }
         }
-
-        // Fetch initial "Form" options
         await fetchOptions('form', {});
       } catch (err) {
-        console.error('Init error:', err);
+        console.error('Init profile error:', err);
       } finally {
         setIsInitialLoading(false);
       }
     };
-    init();
+    initData();
   }, [userId]);
 
   const fetchOptions = async (target: string, currentFilters: any) => {
-    const key = target === 'form' ? 'forms' :
-      target === 'level' ? 'levels' :
-        target === 'course' ? 'courses' :
-          target === 'institute' ? 'institutes' :
-            target === 'direction' ? 'directions' :
-              target === 'program' ? 'programs' : 'groups';
+    const keyMap: any = {
+      form: 'forms', level: 'levels', course: 'courses', institute: 'institutes',
+      direction: 'directions', program: 'programs', group: 'groups'
+    };
+    const key = keyMap[target];
 
     setSelectLoading(prev => ({ ...prev, [target]: true }));
     try {
-      const queryParams = new URLSearchParams({ target, ...currentFilters });
-      const res = await fetch(`/api/profile-options?${queryParams}`);
+      const q = new URLSearchParams({ target, ...currentFilters });
+      const res = await fetch(`/api/profile-options?${q}`);
       if (res.ok) {
         const data = await res.json();
         setOptions(prev => ({ ...prev, [key]: data.options || [] }));
       }
     } catch (err) {
-      console.error(`Fetch ${target} options error:`, err);
+      console.error(`Fetch ${target} error:`, err);
     } finally {
       setSelectLoading(prev => ({ ...prev, [target]: false }));
     }
   };
 
   const handleSelectChange = async (name: string, value: string) => {
+    const nextMap: any = {
+      form: 'level', level: 'course', course: 'institute',
+      institute: 'direction', direction: 'program', program: 'group'
+    };
+
     const newFormData = { ...formData, [name]: value };
 
-    // Reset dependent fields
-    const resetFields: string[] = [];
-    if (name === 'form') resetFields.push('level', 'course', 'institute', 'direction', 'program', 'group');
-    if (name === 'level') resetFields.push('course', 'institute', 'direction', 'program', 'group');
-    if (name === 'course') resetFields.push('institute', 'direction', 'program', 'group');
-    if (name === 'institute') resetFields.push('direction', 'program', 'group');
-    if (name === 'direction') resetFields.push('program', 'group');
-    if (name === 'program') resetFields.push('group');
-
-    resetFields.forEach(f => {
-      (newFormData as any)[f] = '';
-    });
+    // Clear dependencies
+    const order = ['form', 'level', 'course', 'institute', 'direction', 'program', 'group'];
+    const idx = order.indexOf(name);
+    for (let i = idx + 1; i < order.length; i++) {
+      (newFormData as any)[order[i]] = '';
+    }
 
     setFormData(newFormData);
 
-    // Fetch next options
-    const nextTargetMap: any = {
-      'form': 'level',
-      'level': 'course',
-      'course': 'institute',
-      'institute': 'direction',
-      'direction': 'program',
-      'program': 'group'
-    };
-
-    const nextTarget = nextTargetMap[name];
+    const nextTarget = nextMap[name];
     if (nextTarget && value) {
       await fetchOptions(nextTarget, newFormData);
     }
@@ -136,7 +130,6 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ userId, onProfileSaved })
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
     try {
       const payload = {
         user_id: userId,
@@ -152,20 +145,19 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ userId, onProfileSaved })
         profile_completed: 1
       };
 
-      const response = await fetch(`/api/user/${userId}`, {
+      const res = await fetch(`/api/user/${userId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
-      if (response.ok) {
-        const userData = await response.json();
-        onProfileSaved(userData);
-        alert('✅ Профиль успешно сохранен!');
+      if (res.ok) {
+        const data = await res.json();
+        onProfileSaved(data);
+        setIsEditing(false);
       }
     } catch (err) {
-      console.error('Profile save error:', err);
-      alert('❌ Ошибка при сохранении профиля');
+      console.error('Save profile error:', err);
     } finally {
       setLoading(false);
     }
@@ -173,196 +165,195 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ userId, onProfileSaved })
 
   if (isInitialLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50">
-        <Loader2 className="w-10 h-10 text-indigo-600 animate-spin" />
+      <div className="flex h-screen items-center justify-center bg-brand-surface dark:bg-slate-900">
+        <Loader2 className="animate-spin text-brand-primary" size={32} />
       </div>
     );
   }
 
   return (
-    <div className="w-full min-h-screen bg-[#F8FAFC] flex flex-col pt-safe no-scrollbar overflow-y-auto">
-      {/* Header Section */}
-      <div className="px-6 pt-8 pb-4">
-        <div className="flex items-center gap-4 mb-2">
-          <div className="w-14 h-14 bg-indigo-100 rounded-2xl flex items-center justify-center text-indigo-600 shadow-sm">
-            <UserCircle size={32} />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Личный профиль</h1>
-            <p className="text-sm text-slate-500 font-medium">Ваши данные в системе ГУУ</p>
-          </div>
-        </div>
-      </div>
-
-      <form onSubmit={handleSubmit} className="px-6 space-y-6 pb-24">
-
-        {/* Basic Info Card */}
-        <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-4">
-          <div className="flex items-center gap-2 text-indigo-600 mb-2">
-            <User size={18} />
-            <span className="text-xs font-bold uppercase tracking-wider">Основная информация</span>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-400 ml-1">ИМЯ</label>
-              <input
-                type="text"
-                value={formData.first_name}
-                onChange={e => setFormData({ ...formData, first_name: e.target.value })}
-                required
-                placeholder="Введите имя"
-                className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder:text-slate-300"
-              />
+    <div className="flex min-h-screen flex-col bg-brand-surface pb-40 pt-safe dark:bg-slate-900 overflow-y-auto no-scrollbar">
+      <AnimatePresence mode="wait">
+        {!isEditing ? (
+          <motion.div
+            key="profile-view"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            className="px-6 space-y-8 pt-6"
+          >
+            {/* Apple-style Header */}
+            <div className="flex flex-col gap-1 px-2">
+              <h1 className="text-[34px] font-extrabold tracking-tight text-slate-900 dark:text-white leading-[41px]">Профиль</h1>
+              <p className="text-[17px] text-slate-500 font-medium">Твоё учебное пространство</p>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-400 ml-1">ФАМИЛИЯ</label>
-              <input
-                type="text"
-                value={formData.last_name}
-                onChange={e => setFormData({ ...formData, last_name: e.target.value })}
-                required
-                placeholder="Введите фамилию"
-                className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder:text-slate-300"
-              />
+            {/* iOS Summary Card */}
+            <div className="relative overflow-hidden rounded-[2.5rem] p-7 text-white shadow-2xl transition-all hover:scale-[1.01] active:scale-[0.99] bg-gradient-to-br from-brand-primary via-indigo-600 to-brand-secondary">
+              <div className="absolute top-[-20%] right-[-10%] h-64 w-64 rounded-full bg-white/10 blur-3xl"></div>
+
+              <div className="relative z-10 mb-8 flex items-center gap-5">
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white/20 text-3xl font-black backdrop-blur-md border border-white/30 shadow-inner">
+                  {formData.first_name?.[0] || formData.last_name?.[0] || 'U'}
+                </div>
+                <div>
+                  <h2 className="text-2xl font-black leading-[28px] tracking-tight">{formData.first_name || 'Студент'} <br /> {formData.last_name || ''}</h2>
+                  <div className="mt-1 inline-flex items-center rounded-full bg-white/10 px-3 py-0.5 text-[11px] font-bold uppercase tracking-widest backdrop-blur-sm border border-white/10">
+                    {formData.group || 'Группа не выбрана'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="relative z-10 grid grid-cols-2 gap-6 border-t border-white/10 pt-6">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">курс</span>
+                  <span className="text-xl font-black">{formData.course || '-'}<span className="ml-1 text-sm font-bold opacity-60">курс</span></span>
+                </div>
+                <div className="flex flex-col gap-0.5 overflow-hidden">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">институт</span>
+                  <span className="truncate text-xl font-black leading-none">{formData.institute || '-'}</span>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
 
-        {/* Education Path card */}
-        <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-4 relative overflow-hidden">
-          <div className="flex items-center gap-2 text-indigo-600 mb-2">
-            <BookOpen size={18} />
-            <span className="text-xs font-bold uppercase tracking-wider">Путь обучения</span>
-          </div>
+            {/* iOS Grouped List Style */}
+            <section className="space-y-3">
+              <h3 className="ml-4 text-[13px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Учеба</h3>
+              <div className="overflow-hidden rounded-[1.5rem] bg-white dark:bg-[#1C1C1E] border border-slate-100 dark:border-slate-800 shadow-sm shadow-slate-200/50 dark:shadow-none">
+                <ListItem icon={RefreshCcw} title="Обновить данные" onClick={() => window.location.reload()} />
+                <Divider />
+                <ListItem icon={Settings} title="Изменить информацию" onClick={() => setIsEditing(true)} color="secondary" />
+                <Divider />
+                <ListItem icon={ExternalLink} title="Личный кабинет ГУУ" onClick={() => window.open('https://lk.guu.ru', '_blank')} color="primary" />
+              </div>
+            </section>
 
-          {/* Selectors */}
-          <div className="space-y-4">
-            {/* Form of Education */}
-            <Selector
-              label="ФОРМА ОБУЧЕНИЯ"
-              icon={<GraduationCap size={16} />}
-              value={formData.form}
-              options={options.forms}
-              loading={selectLoading.form}
-              onChange={val => handleSelectChange('form', val)}
-            />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="profile-edit"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="px-6 space-y-6 pt-6 pb-40"
+          >
+            <div className="flex items-center justify-between px-2">
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Настройка</h1>
+              <button
+                onClick={() => setIsEditing(false)}
+                className="text-brand-primary font-semibold text-[17px] active:opacity-60 transition-opacity"
+              >
+                Отмена
+              </button>
+            </div>
 
-            <Selector
-              label="УРОВЕНЬ ОБРАЗОВАНИЯ"
-              icon={<School size={16} />}
-              value={formData.level}
-              options={options.levels}
-              loading={selectLoading.level}
-              disabled={!formData.form}
-              onChange={val => handleSelectChange('level', val)}
-            />
+            <form onSubmit={handleSubmit} className="space-y-8">
+              <Group title="Основная информация">
+                <InputField label="Имя" value={formData.first_name} onChange={(v: string) => setFormData({ ...formData, first_name: v })} placeholder="Введите имя" />
+                <Divider />
+                <InputField label="Фамилия" value={formData.last_name} onChange={(v: string) => setFormData({ ...formData, last_name: v })} placeholder="Введите фамилию" />
+              </Group>
 
-            <Selector
-              label="КУРС"
-              icon={<Hash size={16} />}
-              value={formData.course}
-              options={options.courses}
-              loading={selectLoading.course}
-              disabled={!formData.level}
-              onChange={val => handleSelectChange('course', val)}
-            />
+              <Group title="Образование">
+                <IOSSelector label="Форма" value={formData.form} options={options.forms} loading={selectLoading.form} onChange={(v: string) => handleSelectChange('form', v)} />
+                <Divider />
+                <IOSSelector label="Уровень" value={formData.level} options={options.levels} loading={selectLoading.level} disabled={!formData.form} onChange={(v: string) => handleSelectChange('level', v)} />
+                <Divider />
+                <IOSSelector label="Курс" value={formData.course} options={options.courses} loading={selectLoading.course} disabled={!formData.level} onChange={(v: string) => handleSelectChange('course', v)} />
+                <Divider />
+                <IOSSelector label="Институт" value={formData.institute} options={options.institutes} loading={selectLoading.institute} disabled={!formData.course} onChange={(v: string) => handleSelectChange('institute', v)} />
+                <Divider />
+                <IOSSelector label="Направление" value={formData.direction} options={options.directions} loading={selectLoading.direction} disabled={!formData.institute} onChange={(v: string) => handleSelectChange('direction', v)} />
+                <Divider />
+                <IOSSelector label="Программа" value={formData.program} options={options.programs} loading={selectLoading.program} disabled={!formData.direction} onChange={(v: string) => handleSelectChange('program', v)} />
+                <Divider />
+                <IOSSelector label="Группа" value={formData.group} options={options.groups} loading={selectLoading.group} disabled={!formData.program} onChange={(v: string) => handleSelectChange('group', v)} />
+              </Group>
 
-            <Selector
-              label="ИНСТИТУТ"
-              icon={<MapPin size={16} />}
-              value={formData.institute}
-              options={options.institutes}
-              loading={selectLoading.institute}
-              disabled={!formData.course}
-              onChange={val => handleSelectChange('institute', val)}
-            />
-
-            <Selector
-              label="НАПРАВЛЕНИЕ"
-              icon={<BookOpen size={16} />}
-              value={formData.direction}
-              options={options.directions}
-              loading={selectLoading.direction}
-              disabled={!formData.institute}
-              onChange={val => handleSelectChange('direction', val)}
-            />
-
-            <Selector
-              label="ПРОГРАММА"
-              icon={<School size={16} />}
-              value={formData.program}
-              options={options.programs}
-              loading={selectLoading.program}
-              disabled={!formData.direction}
-              onChange={val => handleSelectChange('program', val)}
-            />
-
-            <Selector
-              label="НОМЕР ГРУППЫ"
-              icon={<Hash size={16} />}
-              value={formData.group}
-              options={options.groups}
-              loading={selectLoading.group}
-              disabled={!formData.program}
-              onChange={val => handleSelectChange('group', val)}
-            />
-          </div>
-        </div>
-
-        {/* Action Button */}
-        <button
-          type="submit"
-          disabled={loading || !formData.group}
-          className="w-full bg-indigo-600 text-white font-bold py-5 rounded-3xl shadow-lg shadow-indigo-200 active:scale-[0.98] transition-all disabled:grayscale disabled:opacity-50 flex items-center justify-center gap-3"
-        >
-          {loading ? <Loader2 className="animate-spin" size={24} /> : <Save size={24} />}
-          {loading ? 'СОХРАНЕНИЕ...' : 'СОХРАНИТЬ ПРОФИЛЬ'}
-        </button>
-
-      </form>
+              <button
+                type="submit"
+                disabled={loading || !formData.group}
+                className="w-full bg-brand-primary text-white font-bold py-4.5 rounded-[1.25rem] shadow-xl shadow-brand-primary/20 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-3 text-[17px]"
+              >
+                {loading ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
+                {loading ? 'СОХРАНЕНИЕ...' : 'СОХРАНИТЬ'}
+              </button>
+            </form>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
 
-interface SelectorProps {
-  label: string;
-  icon: React.ReactNode;
-  value: string;
-  options: string[];
-  loading: boolean;
-  disabled?: boolean;
-  onChange: (val: string) => void;
-}
+// --- Helper Components ---
 
-const Selector: React.FC<SelectorProps> = ({ label, icon, value, options, loading, disabled, onChange }) => {
+const Group = ({ title, children }: any) => (
+  <div className="space-y-2">
+    <h3 className="ml-4 text-[13px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">{title}</h3>
+    <div className="overflow-hidden rounded-[1.25rem] bg-white dark:bg-[#1C1C1E] border border-slate-100 dark:border-slate-800 shadow-sm shadow-slate-200/50 dark:shadow-none">
+      {children}
+    </div>
+  </div>
+);
+
+const Divider = () => <div className="h-[0.5px] bg-slate-100 dark:bg-slate-800 ml-12 mr-4"></div>;
+
+const ListItem = ({ icon: Icon, title, onClick, color = "indigo" }: any) => {
+  const colorClasses: any = {
+    indigo: "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400",
+    secondary: "bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400",
+    primary: "bg-brand-primary/10 text-brand-primary dark:bg-brand-primary/20 dark:text-brand-primary",
+  };
   return (
-    <div className={`space-y-1.5 transition-opacity ${disabled ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
-      <div className="flex items-center gap-1.5 ml-1 text-slate-400">
-        {icon}
-        <label className="text-xs font-semibold">{label}</label>
-        {loading && <Loader2 size={12} className="animate-spin text-indigo-400 ml-auto" />}
+    <button
+      onClick={onClick}
+      className="w-full flex items-center justify-between p-4 active:bg-slate-50 dark:active:bg-slate-800/50 transition-colors text-left"
+    >
+      <div className="flex items-center gap-4">
+        <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${colorClasses[color]}`}>
+          <Icon size={22} />
+        </div>
+        <span className="text-[17px] font-semibold text-slate-900 dark:text-slate-100">{title}</span>
       </div>
-      <div className="relative">
+      <ChevronRight size={20} className="text-slate-300 dark:text-slate-600" />
+    </button>
+  );
+};
+
+const InputField = ({ label, value, onChange, placeholder }: any) => (
+  <div className="flex items-center min-h-[52px] px-4 gap-4">
+    <span className="w-24 text-[17px] font-semibold text-slate-500 dark:text-slate-400">{label}</span>
+    <input
+      type="text"
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      placeholder={placeholder}
+      className="flex-1 bg-transparent border-none text-[17px] text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:ring-0 text-right"
+    />
+  </div>
+);
+
+const IOSSelector = ({ label, value, options, loading, disabled, onChange }: any) => (
+  <div className={`flex items-center min-h-[52px] px-4 gap-4 transition-opacity ${disabled ? 'opacity-30' : 'opacity-100'}`}>
+    <span className="w-24 text-[17px] font-semibold text-slate-500 dark:text-slate-400 truncate">{label}</span>
+    <div className="flex-1 flex justify-end items-center gap-2 overflow-hidden">
+      {loading ? (
+        <Loader2 size={16} className="animate-spin text-brand-primary" />
+      ) : (
         <select
           value={value}
           onChange={e => onChange(e.target.value)}
-          className="w-full appearance-none bg-slate-50 border-none rounded-2xl px-4 py-3.5 text-slate-900 text-sm focus:ring-2 focus:ring-indigo-500/20 transition-all pr-10"
+          className="w-full appearance-none bg-transparent border-none text-[17px] text-slate-900 dark:text-white focus:ring-0 text-right font-medium pr-0 cursor-pointer"
+          dir="rtl"
         >
-          <option value="" disabled>Выберите из списка...</option>
-          {options.map(opt => (
-            <option key={opt} value={opt}>{opt}</option>
-          ))}
+          <option value="" disabled>не выбрано</option>
+          {options.map((o: any) => <option key={o} value={o}>{o}</option>)}
         </select>
-        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300">
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </div>
-      </div>
+      )}
+      <ChevronRight size={16} className="text-slate-300 dark:text-slate-600 shrink-0" />
     </div>
-  );
-};
+  </div>
+);
 
 export default ProfileScreen;

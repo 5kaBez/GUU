@@ -1,56 +1,59 @@
-#!/usr/bin/env python3
-"""
-Startup script to run both Flask admin app and Telegram bot concurrently
-"""
-
+import subprocess
 import sys
-from pathlib import Path
-import threading
 import time
+from pathlib import Path
 
-# Add parent directories to path
-project_root = Path(__file__).parent
-sys.path.insert(0, str(project_root))
-sys.path.insert(0, str(project_root / 'src'))
-
-from src.admin.app import run_admin_app
-from src.bot.telegram_bot import bot, logger
-
-def run_admin():
-    """Run Flask admin app in a separate thread"""
-    logger.info("Starting Flask Admin Panel...")
-    try:
-        run_admin_app(debug=False, port=5000)
-    except Exception as e:
-        logger.error(f"Admin app error: {e}", exc_info=True)
-
-def run_bot_polling():
-    """Run Telegram bot in main thread"""
-    logger.info("Starting Telegram Bot...")
-    try:
-        bot.infinity_polling(timeout=10, long_polling_timeout=5)
-    except Exception as e:
-        logger.error(f"Bot error: {e}", exc_info=True)
-
-if __name__ == '__main__':
-    logger.info("=" * 60)
-    logger.info("STARTING SCHEDULE BOT SYSTEM")
-    logger.info("Admin Panel: http://localhost:5000")
-    logger.info("=" * 60)
+def main():
+    project_root = Path(__file__).parent.absolute()
     
-    # Start admin app in a separate thread
-    admin_thread = threading.Thread(target=run_admin, daemon=True)
-    admin_thread.start()
+    print("=" * 50)
+    print("🚀 Starting All Services...")
+    print("=" * 50)
     
-    # Give admin app time to start
-    time.sleep(2)
+    # 1. Start Admin App
+    print("\n[1/2] Starting Flask Admin App...")
+    admin_proc = subprocess.Popen(
+        [sys.executable, str(project_root / "src" / "admin" / "app.py")],
+        cwd=str(project_root)
+    )
+    
+    time.sleep(3) # Give it some time to bind the port
+    
+    # 2. Start Telegram Bot
+    print("[2/2] Starting Telegram Bot...")
+    bot_proc = subprocess.Popen(
+        [sys.executable, str(project_root / "src" / "bot" / "telegram_bot.py")],
+        cwd=str(project_root)
+    )
+    
+    print("\n" + "=" * 50)
+    print("✅ All services are running!")
+    print(f"   - Admin / Mini App: http://127.0.0.1:5000")
+    print("   - Telegram Bot: active")
+    print("=" * 50)
+    print("\nPress Ctrl+C to stop all services (if running in interactive terminal)")
     
     try:
-        # Run bot in main thread
-        run_bot_polling()
+        # Just keep them running
+        while True:
+            if admin_proc.poll() is not None:
+                print("⚠️ Admin process exited. Restarting...")
+                admin_proc = subprocess.Popen(
+                    [sys.executable, str(project_root / "src" / "admin" / "app.py")],
+                    cwd=str(project_root)
+                )
+            if bot_proc.poll() is not None:
+                print("⚠️ Bot process exited. Restarting...")
+                bot_proc = subprocess.Popen(
+                    [sys.executable, str(project_root / "src" / "bot" / "telegram_bot.py")],
+                    cwd=str(project_root)
+                )
+            time.sleep(5)
     except KeyboardInterrupt:
-        logger.info("System stopped by user")
-        sys.exit(0)
-    except Exception as e:
-        logger.error(f"Fatal error: {e}", exc_info=True)
-        sys.exit(1)
+        print("\nStopping services...")
+        admin_proc.terminate()
+        bot_proc.terminate()
+        print("Done.")
+
+if __name__ == "__main__":
+    main()

@@ -22,5 +22,6 @@ TELEGRAM_BOT_TOKEN = 'YOUR_BOT_TOKEN_HERE'  # Replace with your actual bot token
 # Then: ngrok http 5000
 # Copy the URL and paste below
 
-MINIAPP_URL = 'https://localhost:5000/miniapp'  # Change to your serveo/ngrok URL
+import os
+MINIAPP_URL = os.getenv('MINIAPP_URL', 'https://guu-s41w.onrender.com/miniapp')
 

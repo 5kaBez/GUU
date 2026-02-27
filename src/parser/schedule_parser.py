@@ -9,6 +9,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from utils import setup_logging
 from database import Database
+from config import DATABASE_PATH
 
 logger = setup_logging('parser')
 
@@ -68,7 +69,7 @@ class ExcelParser:
     }
     
     def __init__(self, db=None):
-        self.db = db or Database()
+        self.db = db or Database(DATABASE_PATH)
         # Column mapping: Excel columns we want to keep (Программа -> Группа happens in save_to_database)
         self.COLUMN_MAPPING = {
             'Форма обучения': 'Форма обучения',
