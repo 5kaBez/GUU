@@ -1029,6 +1029,29 @@ def get_programs_by_institute(institute):
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/debug/db', methods=['GET'])
+def debug_db():
+    """Debug endpoint to check database state on Render"""
+    try:
+        counts = {}
+        tables = ['schedule', 'users', 'parse_logs', 'feedback']
+        for table in tables:
+            try:
+                res = db.fetch_one(f'SELECT COUNT(*) as count FROM {table}')
+                counts[table] = res['count'] if res else 0
+            except:
+                counts[table] = 'Error or Missing'
+        
+        return jsonify({
+            'database_path': str(db.db_path),
+            'counts': counts,
+            'cwd': os.getcwd(),
+            'files_in_data': os.listdir('data') if os.path.exists('data') else 'Missing'
+        }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 def run_admin_app(debug=False, port=FLASK_PORT):
     """Start the Flask admin app"""
     logger.info(f"Starting admin app on port {port}")
