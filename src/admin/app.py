@@ -23,8 +23,8 @@ app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 hours
 
-db = Database()
-parser = ExcelParser()
+db = Database(DATABASE_PATH)
+parser = ExcelParser(db=db)
 logger = setup_logging('admin_app')
 
 
@@ -50,9 +50,13 @@ def admin_panel():
 def index():
     """Redirect root to miniapp"""
     miniapp_dist = Path(__file__).parent.parent.parent / 'miniapp' / 'dist'
+    logger.info(f"Serving miniapp from: {miniapp_dist.absolute()}")
     if not miniapp_dist.exists():
-        return jsonify({'error': 'Miniapp not built yet'}), 404
-    return send_from_directory(miniapp_dist, 'index.html')
+        return jsonify({'error': 'Miniapp not built yet', 'path': str(miniapp_dist.absolute())}), 404
+    
+    response = send_from_directory(miniapp_dist, 'index.html')
+    response.headers['X-Deployment-ID'] = 'v3-routing-fix'
+    return response
 
 
 @app.route('/miniapp')
@@ -1100,11 +1104,14 @@ def save_user_profile(user_id):
                 user_id,
                 data.get('first_name'),
                 data.get('last_name'),
-                data.get('form_of_education'),
-                data.get('education_level'),
-                data.get('course'),
-                data.get('direction'),
-                data.get('group')
+                data.get('form_of_education') or data.get('Форма обучения'),
+                data.get('education_level') or data.get('Уровень образования'),
+                data.get('course') or data.get('Курс'),
+                data.get('direction') or data.get('Направление'),
+                data.get('group') or data.get('Номер группы'),
+                1,
+                datetime('now'),
+                datetime('now')
             ))
         
         # Return updated user
