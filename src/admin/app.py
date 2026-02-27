@@ -1157,7 +1157,17 @@ def save_user_profile(user_id):
         
     except Exception as e:
         logger.error(f"Error saving profile for user {user_id}: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': str(e), 'version': DEPLOY_VERSION}), 500
+
+
+@app.route('/api/user/<int:user_id>', methods=['GET'])
+def get_user_debug(user_id):
+    """Get user for debug with version"""
+    user = db.fetch_one('SELECT * FROM users WHERE user_id = ?', (user_id,))
+    if user:
+        user['version'] = DEPLOY_VERSION
+        return jsonify(user), 200
+    return jsonify({'error': 'User not found', 'version': DEPLOY_VERSION, 'deploy_id': 'v4'}), 404
 
 
 if __name__ == '__main__':
