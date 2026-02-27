@@ -7,7 +7,10 @@ from datetime import datetime
 import shutil
 
 # Add parent directory to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+BASE_DIR = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(BASE_DIR))
+
+DEPLOY_VERSION = "v4-parser-rename-fix"
 
 from config import FLASK_PORT, ADMIN_SECRET_KEY, ADMIN_PASSWORD, DATABASE_PATH, BACKUP_DIR
 from database import Database
@@ -37,6 +40,7 @@ def debug_db():
                 counts[table] = 'Error or Missing'
         
         return jsonify({
+            'version': DEPLOY_VERSION,
             'database_path': str(db.db_path),
             'counts': counts,
             'cwd': os.getcwd(),
