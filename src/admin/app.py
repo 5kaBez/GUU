@@ -76,13 +76,23 @@ def admin_panel():
 @app.route('/')
 def index():
     """Redirect root to miniapp"""
-    miniapp_dist = Path(__file__).parent.parent.parent / 'miniapp' / 'dist'
+    miniapp_dist = BASE_DIR.parent / 'miniapp' / 'dist'
     logger.info(f"Serving miniapp from: {miniapp_dist.absolute()}")
     if not miniapp_dist.exists():
         return jsonify({'error': 'Miniapp not built yet', 'path': str(miniapp_dist.absolute())}), 404
     
-    response = send_from_directory(miniapp_dist, 'index.html')
-    response.headers['X-Deployment-ID'] = 'v3-routing-fix'
+    with open(miniapp_dist / 'index.html', 'r', encoding='utf-8') as f:
+        content = f.read()
+    
+    # Inject a version tag so we can see if it's the new one
+    version_tag = f'<meta name="deploy-version" content="{DEPLOY_VERSION}_{int(time.time())}">'
+    content = content.replace('<head>', f'<head>{version_tag}')
+    
+    response = make_response(content)
+    # Disable caching for index.html to ensure users get the latest version
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['X-Deployment-ID'] = f"{DEPLOY_VERSION}_{int(time.time())}"
     return response
 
 
@@ -90,23 +100,26 @@ def index():
 @app.route('/miniapp/')
 def miniapp():
     """Serve the React miniapp"""
-    miniapp_dist = Path(__file__).parent.parent.parent / 'miniapp' / 'dist'
+    miniapp_dist = BASE_DIR.parent / 'miniapp' / 'dist'
     if not miniapp_dist.exists():
         return jsonify({'error': 'Miniapp not built yet'}), 404
-    return send_from_directory(miniapp_dist, 'index.html')
+    
+    response = send_from_directory(miniapp_dist, 'index.html')
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    return response
 
 
 @app.route('/miniapp/<path:path>')
 def miniapp_static(path):
     """Serve miniapp static files"""
-    miniapp_dist = Path(__file__).parent.parent.parent / 'miniapp' / 'dist'
+    miniapp_dist = BASE_DIR.parent / 'miniapp' / 'dist'
     return send_from_directory(miniapp_dist, path)
 
 
 @app.route('/assets/<path:path>')
 def assets_static(path):
     """Serve miniapp assets directly (fallback for absolute paths)"""
-    assets_dir = Path(__file__).parent.parent.parent / 'miniapp' / 'dist' / 'assets'
+    assets_dir = BASE_DIR.parent / 'miniapp' / 'dist' / 'assets'
     return send_from_directory(assets_dir, path)
 
 
@@ -150,25 +163,60 @@ def logout():
 
 @app.route('/api/miniapp/schedule/<user_id>', methods=['GET'])
 def get_miniapp_schedule(user_id):
-    """Get user's schedule for MiniApp"""
+    """Get user's schedule for MiniApp using all profile fields"""
     try:
-        user = db.fetch_one('SELECT "Номер группы" FROM users WHERE user_id = ?', (user_id,))
+        user = db.fetch_one('SELECT * FROM users WHERE user_id = ?', (user_id,))
         
-        if not user or not user.get('Номер группы'):
+        if not user or not user.get('profile_completed'):
             return jsonify({'schedule': [], 'message': 'User profile not complete'}), 200
         
-        group = user.get('Номер группы')
+        # Build dynamic query based on ALL profile fields to ensure uniqueness
+        # Strict check for mandatory fields to avoid duplicates
+        required_fields = ['Институт', 'Номер группы', 'Курс', 'Форма обучения']
+        is_profile_really_complete = all(user.get(f) for f in required_fields)
         
-        # Get schedule for this group
-        schedule = db.fetch_all(
-            'SELECT * FROM schedule WHERE "Номер группы" = ? ORDER BY "День" ASC',
-            (group,)
-        )
+        if not user.get('profile_completed') or not is_profile_really_complete:
+            # If profile is missing fields, we might need to reset completion status
+            if user.get('profile_completed'):
+                db.execute('UPDATE users SET profile_completed = 0 WHERE user_id = ?', (user_id,))
+            return jsonify({"message": "User profile not complete (missing fields)", "schedule": []}), 200
+
+        # Mapping of user profile keys to schedule table columns
+        mapping = {
+            'Форма обучения': user.get('Форма обучения'),
+            'Уровень образования': user.get('Уровень образования'),
+            'Курс': user.get('Курс'),
+            'Институт': user.get('Институт'),
+            'Направление': user.get('Направление'),
+            'Программа': user.get('Программа'),
+            'Номер группы': user.get('Номер группы')
+        }
+        
+        query = 'SELECT * FROM schedule WHERE 1=1'
+        params = []
+        
+        for col, val in mapping.items():
+            if val:
+                # Use exact match. For course, ensure it's comparable
+                query += f' AND "{col}" = ?'
+                params.append(val)
+            else:
+                # If a field is missing in profile but exists in schedule table, 
+                # we don't add it to filter, but this leads to duplicates.
+                # In a strict system, we'd require it.
+                logger.warning(f"Field {col} is missing in profile for user {user_id}")
+        
+        # Order by day and lesson number
+        # Note: Database columns are "День недели", "Номер пары"
+        query += ' ORDER BY "День недели", "Номер пары"'
+        
+        schedule = db.fetch_all(query, tuple(params))
         
         return jsonify({
-            'group': group,
+            'user_id': user_id,
             'schedule': schedule,
-            'count': len(schedule)
+            'count': len(schedule),
+            'filters': mapping
         }), 200
     except Exception as e:
         logger.error(f"Error getting schedule for miniapp: {str(e)}")
@@ -1086,17 +1134,7 @@ def run_admin_app(debug=False, port=FLASK_PORT):
 
 # ============= MiniApp API Endpoints (no auth required) =============
 
-@app.route('/api/user/<int:user_id>', methods=['GET'])
-def get_user_profile(user_id):
-    """Get user profile from MiniApp"""
-    try:
-        user = db.fetch_one('SELECT * FROM users WHERE user_id = ?', (user_id,))
-        if user:
-            return jsonify(user), 200
-        return jsonify({'error': 'User not found'}), 404
-    except Exception as e:
-        logger.error(f"Error getting user {user_id}: {e}")
-        return jsonify({'error': str(e)}), 500
+# User profile endpoints moved below
 
 
 @app.route('/api/user/<int:user_id>', methods=['POST'])
@@ -1161,13 +1199,17 @@ def save_user_profile(user_id):
 
 
 @app.route('/api/user/<int:user_id>', methods=['GET'])
-def get_user_debug(user_id):
-    """Get user for debug with version"""
-    user = db.fetch_one('SELECT * FROM users WHERE user_id = ?', (user_id,))
-    if user:
-        user['version'] = DEPLOY_VERSION
-        return jsonify(user), 200
-    return jsonify({'error': 'User not found', 'version': DEPLOY_VERSION, 'deploy_id': 'v4'}), 404
+def get_user_profile(user_id):
+    """Get user profile from MiniApp with debug info"""
+    try:
+        user = db.fetch_one('SELECT * FROM users WHERE user_id = ?', (user_id,))
+        if user:
+            user['version'] = DEPLOY_VERSION
+            return jsonify(user), 200
+        return jsonify({'error': 'User not found', 'version': DEPLOY_VERSION}), 404
+    except Exception as e:
+        logger.error(f"Error getting user {user_id}: {e}")
+        return jsonify({'error': str(e), 'version': DEPLOY_VERSION}), 500
 
 
 if __name__ == '__main__':

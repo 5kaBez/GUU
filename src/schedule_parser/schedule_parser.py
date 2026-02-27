@@ -67,6 +67,19 @@ class ExcelParser:
         'суббота': 'Суббота',
         'воскресенье': 'Воскресенье'
     }
+
+    WEEK_TYPE_MAP = {
+        '1': '1', # Odd
+        '0': '2', # Even (standardizing 0 to 2)
+        '2': '2', # Even
+        'нечетная': '1',
+        'нечётная': '1',
+        'четная': '2',
+        'чётная': '2',
+        'оба': '0',
+        'обе': '0',
+        'все': '0'
+    }
     
     def __init__(self, db=None):
         self.db = db or Database(DATABASE_PATH)
@@ -209,7 +222,14 @@ class ExcelParser:
                 df['Номер пары'] = pd.to_numeric(df['Номер пары'], errors='coerce').astype('Int64')
             except Exception:
                 pass
-        
+
+        # Normalize Week Type (Parity)
+        if 'Чётность' in df.columns:
+            df['Чётность'] = df['Чётность'].astype(str).str.strip().str.lower()
+            df['Чётность'] = df['Чётность'].map(lambda x: self.WEEK_TYPE_MAP.get(x, x))
+            # If not in map and not numeric, default to 0 (both)
+            df.loc[~df['Чётность'].isin(['0', '1', '2']), 'Чётность'] = '0'
+
         logger.info(f"Data cleaning completed. Final: {len(df)} rows")
         return df
     
@@ -434,7 +454,13 @@ class ExcelParser:
                                 val = None
                             elif db_col in ['Курс', 'Номер пары']:
                                 try:
-                                    val = int(val) if pd.notna(val) else None
+                                    # Handle "1 курс" or similar strings
+                                    if isinstance(val, str):
+                                        import re
+                                        matches = re.findall(r'\d+', val)
+                                        val = int(matches[0]) if matches else None
+                                    else:
+                                        val = int(val) if pd.notna(val) else None
                                 except:
                                     val = None
                         else:
@@ -444,6 +470,26 @@ class ExcelParser:
                         values.append(val)
                     
                     values = tuple(values)
+
+                    # Deduplication check
+                    if mode == 'append':
+                        # Check if similar record already exists
+                        # We use IS to correctly handle NULL values in SQLite
+                        check_query = f'''
+                            SELECT COUNT(*) as count FROM schedule 
+                            WHERE "Программа" IS ? AND "День недели" IS ? AND "Номер пары" IS ? 
+                            AND "Предмет" IS ? AND "Чётность" IS ? AND "Время пары" IS ?
+                            AND "Преподаватель" IS ? AND "Номер аудитории" IS ?
+                        '''
+                        # Indices in all_db_cols:
+                        # Программа (5), День недели (7), Номер пары (8), Предмет (11), Чётность (10),
+                        # Время пары (9), Преподаватель (13), Номер аудитории (14)
+                        check_params = (values[5], values[7], values[8], values[11], values[10], values[9], values[13], values[14])
+                        
+                        cursor.execute(check_query, check_params)
+                        if cursor.fetchone()[0] > 0:
+                            continue
+
                     cursor.execute(insert_query, values)
                     records_added += 1
                     
