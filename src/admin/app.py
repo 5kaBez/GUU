@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config import FLASK_PORT, ADMIN_SECRET_KEY, ADMIN_PASSWORD, DATABASE_PATH, BACKUP_DIR
 from database import Database
-from parser import ExcelParser
+from schedule_parser import ExcelParser
 from utils import setup_logging
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
