@@ -1196,14 +1196,8 @@ def save_user_profile(user_id=None):
         # Return updated user
         updated_user = db.fetch_one('SELECT * FROM users WHERE user_id = ?', (uid,))
         logger.info(f"Profile saved for user {uid}")
-        return jsonify(updated_user), 200
-        
     except Exception as e:
-        logger.error(f"Error saving profile for user {user_id}: {e}")
-        return jsonify({'error': str(e), 'version': DEPLOY_VERSION}), 500
-        
-    except Exception as e:
-        logger.error(f"Error saving profile for user {user_id}: {e}")
+        logger.error(f"Error saving profile for user {uid}: {e}")
         return jsonify({'error': str(e), 'version': DEPLOY_VERSION}), 500
 
 
@@ -1220,24 +1214,6 @@ def get_user_profile(user_id):
     except Exception as e:
         logger.error(f"Error getting user {user_id}: {e}")
         return jsonify({'error': str(e), 'version': DEPLOY_VERSION}), 500
-
-
-@app.route('/api/miniapp/filters', methods=['GET'])
-def get_miniapp_filters():
-    """Public filters for miniapp"""
-    # Simply call the existing logic or copy it
-    try:
-        courses = db.fetch_all('SELECT DISTINCT "Курс" FROM schedule WHERE "Курс" IS NOT NULL ORDER BY "Курс"')
-        institutes = db.fetch_all('SELECT DISTINCT "Институт" FROM schedule WHERE "Институт" IS NOT NULL ORDER BY "Институт"')
-        day_list = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота']
-        
-        return jsonify({
-            'courses': [c['Курс'] for c in courses],
-            'institutes': [i['Институт'] for i in institutes],
-            'days': day_list
-        }), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
 
 
 if __name__ == '__main__':
