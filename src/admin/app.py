@@ -1137,14 +1137,19 @@ def run_admin_app(debug=False, port=FLASK_PORT):
 # User profile endpoints moved below
 
 
+@app.route('/api/miniapp/profile', methods=['POST'])
+@app.route('/api/miniapp/user/<int:user_id>', methods=['POST'])
 @app.route('/api/user/<int:user_id>', methods=['POST'])
-def save_user_profile(user_id):
+def save_user_profile(user_id=None):
     """Save or update user profile from MiniApp"""
     try:
-        data = request.get_json()
+        data = request.get_json() or {}
+        uid = user_id or data.get('user_id')
+        if not uid:
+            return jsonify({'error': 'Missing user_id'}), 400
         
         # Check if user exists
-        user = db.fetch_one('SELECT * FROM users WHERE user_id = ?', (user_id,))
+        user = db.fetch_one('SELECT * FROM users WHERE user_id = ?', (uid,))
         
         if user:
             # Update existing user
@@ -1161,14 +1166,14 @@ def save_user_profile(user_id):
                     updated_at = datetime('now')
                 WHERE user_id = ?
             ''', (
-                data.get('first_name'),
-                data.get('last_name'),
-                data.get('form_of_education') or data.get('Форма обучения'),
-                data.get('education_level') or data.get('Уровень образования'),
-                data.get('course') or data.get('Курс'),
-                data.get('direction') or data.get('Направление'),
-                data.get('group') or data.get('Номер группы'),
-                user_id
+                data.get('first_name') or user.get('first_name'),
+                data.get('last_name') or user.get('last_name'),
+                data.get('form_of_education') or data.get('Форма обучения') or user.get('Форма обучения'),
+                data.get('education_level') or data.get('Уровень образования') or user.get('Уровень образования'),
+                data.get('course') or data.get('Курс') or user.get('Курс'),
+                data.get('direction') or data.get('Направление') or user.get('Направление'),
+                data.get('group') or data.get('Номер группы') or user.get('Номер группы'),
+                uid
             ))
         else:
             # Create new user
@@ -1178,7 +1183,7 @@ def save_user_profile(user_id):
                  "Курс", "Направление", "Номер группы", profile_completed, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))
             ''', (
-                user_id,
+                uid,
                 data.get('first_name'),
                 data.get('last_name'),
                 data.get('form_of_education') or data.get('Форма обучения'),
@@ -1189,15 +1194,20 @@ def save_user_profile(user_id):
             ))
         
         # Return updated user
-        updated_user = db.fetch_one('SELECT * FROM users WHERE user_id = ?', (user_id,))
-        logger.info(f"Profile saved for user {user_id}")
+        updated_user = db.fetch_one('SELECT * FROM users WHERE user_id = ?', (uid,))
+        logger.info(f"Profile saved for user {uid}")
         return jsonify(updated_user), 200
+        
+    except Exception as e:
+        logger.error(f"Error saving profile for user {user_id}: {e}")
+        return jsonify({'error': str(e), 'version': DEPLOY_VERSION}), 500
         
     except Exception as e:
         logger.error(f"Error saving profile for user {user_id}: {e}")
         return jsonify({'error': str(e), 'version': DEPLOY_VERSION}), 500
 
 
+@app.route('/api/miniapp/user/<int:user_id>', methods=['GET'])
 @app.route('/api/user/<int:user_id>', methods=['GET'])
 def get_user_profile(user_id):
     """Get user profile from MiniApp with debug info"""
@@ -1210,6 +1220,24 @@ def get_user_profile(user_id):
     except Exception as e:
         logger.error(f"Error getting user {user_id}: {e}")
         return jsonify({'error': str(e), 'version': DEPLOY_VERSION}), 500
+
+
+@app.route('/api/miniapp/filters', methods=['GET'])
+def get_miniapp_filters():
+    """Public filters for miniapp"""
+    # Simply call the existing logic or copy it
+    try:
+        courses = db.fetch_all('SELECT DISTINCT "Курс" FROM schedule WHERE "Курс" IS NOT NULL ORDER BY "Курс"')
+        institutes = db.fetch_all('SELECT DISTINCT "Институт" FROM schedule WHERE "Институт" IS NOT NULL ORDER BY "Институт"')
+        day_list = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота']
+        
+        return jsonify({
+            'courses': [c['Курс'] for c in courses],
+            'institutes': [i['Институт'] for i in institutes],
+            'days': day_list
+        }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 if __name__ == '__main__':
