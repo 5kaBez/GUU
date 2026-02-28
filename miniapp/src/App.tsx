@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BookOpen, User as UserIcon, Settings, Calendar, Bell } from 'lucide-react';
 import WeekView from './components/WeekView';
+import ProfileEditor from './components/ProfileEditor';
 import { api } from './services/api';
 import { ScheduleItem } from './types';
 
